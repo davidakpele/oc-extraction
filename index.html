@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OCR Engine — Test Console</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0A0C0F;
+    --surface:  #111418;
+    --panel:    #161B22;
+    --border:   #21262D;
+    --accent:   #3FB950;
+    --accent2:  #58A6FF;
+    --warn:     #D29922;
+    --danger:   #F85149;
+    --muted:    #484F58;
+    --text:     #E6EDF3;
+    --subtext:  #8B949E;
+    --mono:     'JetBrains Mono', monospace;
+    --sans:     'Syne', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--mono);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid noise overlay ────────────────────── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(63,185,80,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(63,185,80,0.03) 1px, transparent 1px);
+    background-size: 32px 32px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── Layout ─────────────────────────────────── */
+  .app {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px 60px;
+  }
+
+  /* ── Header ─────────────────────────────────── */
+  header {
+    padding: 40px 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 36px;
+    animation: fadeDown 0.5s ease both;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .logo-icon {
+    width: 42px;
+    height: 42px;
+    background: var(--accent);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 20px rgba(63,185,80,0.35);
+  }
+
+  .logo-text h1 {
+    font-family: var(--sans);
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.3px;
+  }
+
+  .logo-text p {
+    font-size: 11px;
+    color: var(--subtext);
+    letter-spacing: 0.5px;
+    margin-top: 1px;
+  }
+
+  .health-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--subtext);
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+
+  .health-badge:hover { border-color: var(--accent); }
+
+  .health-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+
+  .health-dot.ok  { background: var(--accent); box-shadow: 0 0 6px var(--accent); animation: pulse 2s infinite; }
+  .health-dot.err { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.5; }
+  }
+
+  /* ── Section label ──────────────────────────── */
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+  }
+
+  /* ── Config row ─────────────────────────────── */
+  .config-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    margin-bottom: 32px;
+    animation: fadeDown 0.5s 0.1s ease both;
+  }
+
+  .input-group {
+    position: relative;
+  }
+
+  .input-group label {
+    display: block;
+    font-size: 11px;
+    color: var(--subtext);
+    margin-bottom: 6px;
+    letter-spacing: 0.5px;
+  }
+
+  .input-group input {
+    width: 100%;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 10px 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .input-group input:focus { border-color: var(--accent2); }
+
+  /* ── Two-column grid ────────────────────────── */
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 720px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  /* ── Panel ──────────────────────────────────── */
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  .panel-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .panel-title {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .panel-body { padding: 20px 18px; }
+
+  /* ── Upload zone ────────────────────────────── */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 10px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+
+  .upload-zone:hover,
+  .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: rgba(63,185,80,0.04);
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    width: 48px;
+    height: 48px;
+    margin: 0 auto 14px;
+    background: rgba(63,185,80,0.1);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .upload-zone p {
+    font-size: 13px;
+    color: var(--subtext);
+    line-height: 1.6;
+  }
+
+  .upload-zone p strong { color: var(--text); }
+
+  .upload-zone .file-selected {
+    margin-top: 12px;
+    font-size: 12px;
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  /* ── Buttons ────────────────────────────────── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: #0A0C0F;
+    font-weight: 700;
+    box-shadow: 0 0 16px rgba(63,185,80,0.25);
+  }
+
+  .btn-primary:hover { background: #52d966; box-shadow: 0 0 24px rgba(63,185,80,0.4); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+  .btn-secondary {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  .btn-secondary:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--subtext);
+    padding: 6px 10px;
+    font-size: 11px;
+  }
+
+  .btn-ghost:hover { color: var(--text); }
+
+  .btn-full { width: 100%; justify-content: center; margin-top: 14px; }
+
+  /* ── Job status pill ────────────────────────── */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .status-queued   { background: rgba(210,153,34,0.15);  color: var(--warn);   }
+  .status-running  { background: rgba(88,166,255,0.15);  color: var(--accent2); }
+  .status-success  { background: rgba(63,185,80,0.15);   color: var(--accent);  }
+  .status-failed   { background: rgba(248,81,73,0.15);   color: var(--danger);  }
+  .status-unknown  { background: rgba(72,79,88,0.3);     color: var(--muted);   }
+
+  /* ── Jobs list ──────────────────────────────── */
+  .jobs-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .job-item {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    transition: border-color 0.2s;
+    animation: fadeUp 0.3s ease both;
+  }
+
+  .job-item:hover { border-color: var(--accent2); }
+
+  .job-info { flex: 1; min-width: 0; }
+
+  .job-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 3px;
+  }
+
+  .job-meta {
+    font-size: 11px;
+    color: var(--subtext);
+  }
+
+  .job-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+  /* ── Result viewer ──────────────────────────── */
+  .result-area {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    min-height: 200px;
+    max-height: 480px;
+    overflow-y: auto;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+
+  .result-area pre {
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: var(--text);
+  }
+
+  /* JSON syntax colors */
+  .json-key    { color: #79C0FF; }
+  .json-str    { color: #A5D6FF; }
+  .json-num    { color: #FF7B72; }
+  .json-bool   { color: var(--warn); }
+  .json-null   { color: var(--muted); }
+
+  .placeholder-msg {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 160px;
+    color: var(--muted);
+    font-size: 12px;
+    gap: 10px;
+    text-align: center;
+  }
+
+  /* ── Confidence bar ─────────────────────────── */
+  .confidence-bar-wrap {
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .confidence-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--subtext);
+    margin-bottom: 8px;
+  }
+
+  .confidence-label span:last-child { color: var(--accent); font-weight: 700; }
+
+  .bar-track {
+    height: 6px;
+    background: var(--border);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, var(--accent), #58FF80);
+    transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  /* ── Log console ────────────────────────────── */
+  .log-console {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    max-height: 180px;
+    overflow-y: auto;
+    font-size: 11px;
+    line-height: 1.8;
+  }
+
+  .log-line { display: flex; gap: 10px; }
+  .log-time { color: var(--muted); flex-shrink: 0; }
+  .log-info  { color: var(--accent2); }
+  .log-ok    { color: var(--accent); }
+  .log-warn  { color: var(--warn); }
+  .log-err   { color: var(--danger); }
+
+  /* ── Spinner ─────────────────────────────────── */
+  .spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(63,185,80,0.3);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Animations ─────────────────────────────── */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Scrollbar ──────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  /* ── Toast ───────────────────────────────────── */
+  .toast-wrap {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 999;
+  }
+
+  .toast {
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    border-left: 3px solid;
+    background: var(--panel);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    animation: slideIn 0.3s ease;
+    max-width: 320px;
+  }
+
+  .toast.ok   { border-color: var(--accent);  color: var(--accent); }
+  .toast.err  { border-color: var(--danger);  color: var(--danger); }
+  .toast.info { border-color: var(--accent2); color: var(--accent2); }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* ── Tabs ────────────────────────────────────── */
+  .tabs {
+    display: flex;
+    gap: 2px;
+    background: var(--surface);
+    padding: 4px;
+    border-radius: 8px;
+    margin-bottom: 14px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-align: center;
+    cursor: pointer;
+    color: var(--subtext);
+    transition: all 0.2s;
+    border: none;
+    background: transparent;
+    font-family: var(--mono);
+  }
+
+  .tab.active {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+
+  /* ── Empty state ────────────────────────────── */
+  .empty {
+    text-align: center;
+    padding: 30px;
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  /* ── Poll indicator ─────────────────────────── */
+  .polling-badge {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--accent2);
+  }
+
+  .polling-badge.active { display: flex; }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- ── Header ──────────────────────────────── -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0A0C0F" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+          <polyline points="10 9 9 9 8 9"/>
+        </svg>
+      </div>
+      <div class="logo-text">
+        <h1>OCR Extraction Engine</h1>
+        <p>TEST CONSOLE &nbsp;·&nbsp; v1.0</p>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div class="polling-badge" id="pollingBadge">
+        <div class="spinner"></div>
+        <span>polling...</span>
+      </div>
+      <div class="health-badge" onclick="checkHealth()" title="Click to check health">
+        <div class="health-dot" id="healthDot"></div>
+        <span id="healthLabel">checking...</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── API Base URL config ──────────────────── -->
+  <div class="config-row" style="animation-delay:0.05s">
+    <div class="input-group">
+      <label>API BASE URL</label>
+      <input type="text" id="baseUrl" value="http://localhost:3001" placeholder="http://localhost:3001">
+    </div>
+    <div class="input-group" style="min-width:200px;">
+      <label>API KEY (optional)</label>
+      <input type="password" id="apiKey" placeholder="leave blank if disabled">
+    </div>
+  </div>
+
+  <!-- ── Main grid ─────────────────────────────── -->
+  <div class="grid-2">
+
+    <!-- LEFT: Upload + Jobs ────────────────────── -->
+    <div style="display:flex; flex-direction:column; gap:20px;">
+
+      <!-- Upload Panel -->
+      <div class="panel" style="animation-delay:0.1s">
+        <div class="panel-header">
+          <span class="panel-title">Upload Document</span>
+          <span style="font-size:11px; color:var(--subtext)">PDF only · max 50MB</span>
+        </div>
+        <div class="panel-body">
+          <div class="upload-zone" id="uploadZone">
+            <input type="file" id="fileInput" accept=".pdf" onchange="onFileSelected(this)">
+            <div class="upload-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#3FB950" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="16 16 12 12 8 16"/>
+                <line x1="12" y1="12" x2="12" y2="21"/>
+                <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/>
+              </svg>
+            </div>
+            <p><strong>Drop PDF here</strong><br>or click to browse</p>
+            <p class="file-selected" id="fileSelectedLabel"></p>
+          </div>
+
+          <button class="btn btn-primary btn-full" id="uploadBtn" onclick="uploadFile()" disabled>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/>
+              <path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/>
+            </svg>
+            Upload &amp; Process
+          </button>
+        </div>
+      </div>
+
+      <!-- Batch Upload Panel -->
+      <div class="panel" style="animation-delay:0.15s">
+        <div class="panel-header">
+          <span class="panel-title">Batch Upload</span>
+          <span style="font-size:11px; color:var(--subtext)">up to 20 files</span>
+        </div>
+        <div class="panel-body">
+          <div class="upload-zone" id="batchZone">
+            <input type="file" id="batchInput" accept=".pdf" multiple onchange="onBatchSelected(this)">
+            <div class="upload-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#58A6FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/>
+                <line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+            </div>
+            <p><strong>Select multiple PDFs</strong><br>or click to browse</p>
+            <p class="file-selected" id="batchSelectedLabel"></p>
+          </div>
+
+          <button class="btn btn-secondary btn-full" id="batchBtn" onclick="uploadBatch()" disabled style="margin-top:14px; border-color:var(--accent2); color:var(--accent2);">
+            Upload Batch
+          </button>
+        </div>
+      </div>
+
+      <!-- Job Lookup Panel -->
+      <div class="panel" style="animation-delay:0.2s">
+        <div class="panel-header">
+          <span class="panel-title">Job Lookup</span>
+        </div>
+        <div class="panel-body">
+          <div class="input-group" style="margin-bottom:10px;">
+            <label>JOB ID</label>
+            <input type="text" id="lookupJobId" placeholder="paste job UUID here...">
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary" style="flex:1" onclick="lookupJob()">Check Status</button>
+            <button class="btn btn-secondary" style="flex:1" onclick="fetchResult()">Fetch Result</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Result + Log ────────────────────── -->
+    <div style="display:flex; flex-direction:column; gap:20px;">
+
+      <!-- Jobs Tracker -->
+      <div class="panel" style="animation-delay:0.12s">
+        <div class="panel-header">
+          <span class="panel-title">Active Jobs</span>
+          <button class="btn btn-ghost" onclick="clearJobs()">clear</button>
+        </div>
+        <div class="panel-body" style="padding:12px 14px;">
+          <div class="jobs-list" id="jobsList">
+            <div class="empty">No jobs yet. Upload a document to start.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Result Viewer -->
+      <div class="panel" style="animation-delay:0.18s">
+        <div class="panel-header">
+          <span class="panel-title">Extraction Result</span>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-ghost" onclick="copyResult()">copy</button>
+            <button class="btn btn-ghost" onclick="clearResult()">clear</button>
+          </div>
+        </div>
+        <div class="panel-body" style="padding:12px 14px;">
+
+          <!-- Confidence bar (hidden until result) -->
+          <div class="confidence-bar-wrap" id="confidenceWrap" style="display:none;">
+            <div class="confidence-label">
+              <span>Extraction Confidence</span>
+              <span id="confidenceVal">0%</span>
+            </div>
+            <div class="bar-track">
+              <div class="bar-fill" id="confidenceBar" style="width:0%"></div>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="tabs" id="resultTabs" style="display:none;">
+            <button class="tab active" onclick="switchTab('pretty', this)">Pretty</button>
+            <button class="tab" onclick="switchTab('raw', this)">Raw JSON</button>
+            <button class="tab" onclick="switchTab('summary', this)">Summary</button>
+          </div>
+
+          <div class="result-area" id="resultArea">
+            <div class="placeholder-msg">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              </svg>
+              <span>Upload a document or look up a job<br>to see extraction results here</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity Log -->
+      <div class="panel" style="animation-delay:0.22s">
+        <div class="panel-header">
+          <span class="panel-title">Activity Log</span>
+          <button class="btn btn-ghost" onclick="clearLog()">clear</button>
+        </div>
+        <div class="panel-body" style="padding:10px 14px;">
+          <div class="log-console" id="logConsole">
+            <div class="log-line">
+              <span class="log-time" id="initTime"></span>
+              <span class="log-info">Console ready. Configure your API URL and upload a PDF.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast container -->
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+// ── State ────────────────────────────────────────
+let jobs = [];        // { jobId, docId, name, status, result }
+let resultData = null;
+let pollTimers = {};
+let activeTab = 'pretty';
+
+// ── Init ─────────────────────────────────────────
+document.getElementById('initTime').textContent = now();
+checkHealth();
+
+// Drag & drop
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0];
+  if (f && f.type === 'application/pdf') {
+    document.getElementById('fileInput').files = e.dataTransfer.files;
+    onFileSelected({ files: e.dataTransfer.files });
+  } else {
+    toast('Only PDF files are accepted', 'err');
+  }
+});
+
+// ── Helpers ──────────────────────────────────────
+function getBase()    { return document.getElementById('baseUrl').value.replace(/\/$/, ''); }
+function getHeaders() {
+  const key = document.getElementById('apiKey').value;
+  const h = {};
+  if (key) h['x-api-key'] = key;
+  return h;
+}
+function now() {
+  return new Date().toLocaleTimeString('en-GB', { hour12: false });
+}
+
+function log(msg, type = 'info') {
+  const c = document.getElementById('logConsole');
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-time">${now()}</span><span class="log-${type}">${msg}</span>`;
+  c.appendChild(line);
+  c.scrollTop = c.scrollHeight;
+}
+
+function toast(msg, type = 'info') {
+  const wrap = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+
+function statusPill(status) {
+  const map = {
+    queued: 'queued', running: 'running',
+    success: 'success', failed: 'failed',
+  };
+  const cls = map[status] || 'unknown';
+  const dot = status === 'running' ? '<div class="spinner" style="width:8px;height:8px;border-width:1.5px"></div>' : '';
+  return `<span class="status-pill status-${cls}">${dot}${status || 'unknown'}</span>`;
+}
+
+// ── Health check ─────────────────────────────────
+async function checkHealth() {
+  const dot = document.getElementById('healthDot');
+  const label = document.getElementById('healthLabel');
+  try {
+    const res = await fetch(`${getBase()}/health`, { headers: getHeaders() });
+    const data = await res.json();
+    if (data.status === 'ok') {
+      dot.className = 'health-dot ok';
+      label.textContent = 'online';
+      log('Health check OK — engine is running', 'ok');
+    } else {
+      dot.className = 'health-dot err';
+      label.textContent = 'degraded';
+      log(`Health degraded: ${JSON.stringify(data.checks)}`, 'warn');
+    }
+  } catch (e) {
+    dot.className = 'health-dot err';
+    label.textContent = 'offline';
+    log(`Health check failed — is the engine running at ${getBase()}?`, 'err');
+  }
+}
+
+// ── File selection ────────────────────────────────
+function onFileSelected(input) {
+  const f = input.files ? input.files[0] : null;
+  const lbl = document.getElementById('fileSelectedLabel');
+  const btn = document.getElementById('uploadBtn');
+  if (f) {
+    lbl.textContent = `📄 ${f.name} (${(f.size / 1024).toFixed(1)} KB)`;
+    btn.disabled = false;
+  } else {
+    lbl.textContent = '';
+    btn.disabled = true;
+  }
+}
+
+function onBatchSelected(input) {
+  const files = input.files;
+  const lbl = document.getElementById('batchSelectedLabel');
+  const btn = document.getElementById('batchBtn');
+  if (files && files.length > 0) {
+    lbl.textContent = `📂 ${files.length} file(s) selected`;
+    btn.disabled = false;
+  } else {
+    lbl.textContent = '';
+    btn.disabled = true;
+  }
+}
+
+// ── Upload single ─────────────────────────────────
+async function uploadFile() {
+  const input = document.getElementById('fileInput');
+  const file = input.files[0];
+  if (!file) return toast('Please select a PDF file', 'err');
+
+  const btn = document.getElementById('uploadBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Uploading...';
+
+  const form = new FormData();
+  form.append('file', file);
+
+  try {
+    log(`Uploading "${file.name}"...`, 'info');
+    const res = await fetch(`${getBase()}/api/v1/documents/upload`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: form,
+    });
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.error || res.statusText);
+
+    log(`Queued! doc_id=${data.document_id} job_id=${data.job_id}`, 'ok');
+    toast(`Job queued: ${data.job_id.slice(0,8)}...`, 'ok');
+
+    addJob({ jobId: data.job_id, docId: data.document_id, name: file.name, status: 'queued' });
+    startPolling(data.job_id);
+
+    // Reset
+    input.value = '';
+    document.getElementById('fileSelectedLabel').textContent = '';
+  } catch (e) {
+    log(`Upload failed: ${e.message}`, 'err');
+    toast(`Upload failed: ${e.message}`, 'err');
+  } finally {
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg> Upload & Process`;
+    btn.disabled = true;
+  }
+}
+
+// ── Upload batch ──────────────────────────────────
+async function uploadBatch() {
+  const input = document.getElementById('batchInput');
+  const files = input.files;
+  if (!files || files.length === 0) return toast('Please select files', 'err');
+
+  const btn = document.getElementById('batchBtn');
+  btn.disabled = true;
+  btn.textContent = 'Uploading...';
+
+  const form = new FormData();
+  for (const f of files) form.append('files', f);
+
+  try {
+    log(`Batch uploading ${files.length} file(s)...`, 'info');
+    const res = await fetch(`${getBase()}/api/v1/documents/upload-batch`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: form,
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.statusText);
+
+    log(`Batch accepted: ${data.accepted} document(s)`, 'ok');
+    toast(`${data.accepted} jobs queued`, 'ok');
+
+    for (const doc of data.documents) {
+      addJob({ jobId: doc.job_id, docId: doc.document_id, name: doc.filename, status: 'queued' });
+      startPolling(doc.job_id);
+    }
+
+    input.value = '';
+    document.getElementById('batchSelectedLabel').textContent = '';
+  } catch (e) {
+    log(`Batch upload failed: ${e.message}`, 'err');
+    toast(`Batch failed: ${e.message}`, 'err');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Upload Batch';
+  }
+}
+
+// ── Job tracking ──────────────────────────────────
+function addJob(job) {
+  jobs.unshift(job);
+  renderJobs();
+}
+
+function updateJob(jobId, updates) {
+  const j = jobs.find(j => j.jobId === jobId);
+  if (j) Object.assign(j, updates);
+  renderJobs();
+}
+
+function renderJobs() {
+  const list = document.getElementById('jobsList');
+  if (jobs.length === 0) {
+    list.innerHTML = '<div class="empty">No jobs yet. Upload a document to start.</div>';
+    return;
+  }
+
+  list.innerHTML = jobs.map(j => `
+    <div class="job-item" id="job-${j.jobId}">
+      <div class="job-info">
+        <div class="job-name" title="${j.name}">${j.name}</div>
+        <div class="job-meta">${j.jobId.slice(0,16)}...</div>
+      </div>
+      ${statusPill(j.status)}
+      <div class="job-actions">
+        ${j.status === 'success' ? `<button class="btn btn-ghost" style="color:var(--accent)" onclick="viewResult('${j.jobId}')">view</button>` : ''}
+        <button class="btn btn-ghost" onclick="document.getElementById('lookupJobId').value='${j.jobId}'">copy id</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function clearJobs() {
+  // Stop all pollers
+  Object.values(pollTimers).forEach(clearInterval);
+  pollTimers = {};
+  jobs = [];
+  renderJobs();
+  document.getElementById('pollingBadge').classList.remove('active');
+}
+
+// ── Polling ───────────────────────────────────────
+function startPolling(jobId) {
+  document.getElementById('pollingBadge').classList.add('active');
+  log(`Polling job ${jobId.slice(0,8)}...`, 'info');
+
+  const timer = setInterval(async () => {
+    try {
+      const res = await fetch(`${getBase()}/api/v1/jobs/${jobId}`, { headers: getHeaders() });
+      const data = await res.json();
+
+      updateJob(jobId, { status: data.status });
+
+      if (data.status === 'success') {
+        clearInterval(timer);
+        delete pollTimers[jobId];
+        log(`Job ${jobId.slice(0,8)} completed successfully`, 'ok');
+        toast('Extraction complete!', 'ok');
+        viewResult(jobId);
+        checkAnyPolling();
+      } else if (data.status === 'failed') {
+        clearInterval(timer);
+        delete pollTimers[jobId];
+        log(`Job ${jobId.slice(0,8)} failed: ${data.error_message}`, 'err');
+        toast(`Job failed: ${data.error_message}`, 'err');
+        checkAnyPolling();
+      }
+    } catch (e) {
+      log(`Poll error for ${jobId.slice(0,8)}: ${e.message}`, 'warn');
+    }
+  }, 2500);
+
+  pollTimers[jobId] = timer;
+}
+
+function checkAnyPolling() {
+  if (Object.keys(pollTimers).length === 0) {
+    document.getElementById('pollingBadge').classList.remove('active');
+  }
+}
+
+// ── Result viewer ─────────────────────────────────
+async function viewResult(jobId) {
+  try {
+    log(`Fetching result for job ${jobId.slice(0,8)}...`, 'info');
+    const res = await fetch(`${getBase()}/api/v1/jobs/${jobId}/result`, { headers: getHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || data.message || res.statusText);
+    displayResult(data);
+  } catch (e) {
+    log(`Failed to fetch result: ${e.message}`, 'err');
+    toast(`Result error: ${e.message}`, 'err');
+  }
+}
+
+async function fetchResult() {
+  const jobId = document.getElementById('lookupJobId').value.trim();
+  if (!jobId) return toast('Enter a job ID first', 'err');
+  await viewResult(jobId);
+}
+
+async function lookupJob() {
+  const jobId = document.getElementById('lookupJobId').value.trim();
+  if (!jobId) return toast('Enter a job ID first', 'err');
+  try {
+    const res = await fetch(`${getBase()}/api/v1/jobs/${jobId}`, { headers: getHeaders() });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || res.statusText);
+    log(`Job ${jobId.slice(0,8)} status: ${data.status}`, data.status === 'success' ? 'ok' : data.status === 'failed' ? 'err' : 'info');
+    toast(`Status: ${data.status}`, data.status === 'success' ? 'ok' : 'info');
+
+    // Upsert into jobs list
+    const existing = jobs.find(j => j.jobId === jobId);
+    if (existing) updateJob(jobId, { status: data.status });
+    else addJob({ jobId, docId: data.document_id, name: data.original_name || jobId, status: data.status });
+  } catch (e) {
+    log(`Lookup failed: ${e.message}`, 'err');
+    toast(`Lookup failed: ${e.message}`, 'err');
+  }
+}
+
+function displayResult(data) {
+  resultData = data;
+
+  // Confidence bar
+  if (data.confidence !== undefined) {
+    const pct = Math.round(data.confidence * 100);
+    document.getElementById('confidenceWrap').style.display = 'block';
+    document.getElementById('confidenceVal').textContent = `${pct}%`;
+    setTimeout(() => {
+      document.getElementById('confidenceBar').style.width = `${pct}%`;
+    }, 50);
+  }
+
+  document.getElementById('resultTabs').style.display = 'flex';
+  switchTab(activeTab);
+  log(`Result loaded — type: ${data.document_type}, confidence: ${Math.round((data.confidence||0)*100)}%`, 'ok');
+}
+
+function switchTab(tab, el) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  if (!resultData) return;
+  const area = document.getElementById('resultArea');
+
+  if (tab === 'raw') {
+    area.innerHTML = `<pre>${escapeHtml(JSON.stringify(resultData, null, 2))}</pre>`;
+  } else if (tab === 'pretty') {
+    area.innerHTML = `<pre>${syntaxHighlight(resultData)}</pre>`;
+  } else if (tab === 'summary') {
+    area.innerHTML = buildSummary(resultData);
+  }
+}
+
+function syntaxHighlight(obj) {
+  const json = JSON.stringify(obj, null, 2);
+  return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
+    let cls = 'json-num';
+    if (/^"/.test(match)) {
+      cls = /:$/.test(match) ? 'json-key' : 'json-str';
+    } else if (/true|false/.test(match)) {
+      cls = 'json-bool';
+    } else if (/null/.test(match)) {
+      cls = 'json-null';
+    }
+    return `<span class="${cls}">${match}</span>`;
+  });
+}
+
+function buildSummary(data) {
+  if (data.document_type === 'bank_statement') {
+    const h = data.header || {};
+    const txns = data.transactions || [];
+    return `
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="color:var(--accent);font-size:11px;font-weight:700;letter-spacing:1px;">BANK STATEMENT</div>
+        ${summaryRow('Bank', h.bank_name)}
+        ${summaryRow('Account', h.account_number)}
+        ${summaryRow('Holder', h.account_holder_name)}
+        ${summaryRow('Period', `${h.statement_period_from || '?'} → ${h.statement_period_to || '?'}`)}
+        ${summaryRow('Opening Balance', h.opening_balance !== null ? `${h.currency} ${h.opening_balance?.toLocaleString()}` : null)}
+        ${summaryRow('Closing Balance', h.closing_balance !== null ? `${h.currency} ${h.closing_balance?.toLocaleString()}` : null)}
+        ${summaryRow('Transactions', txns.length)}
+        ${summaryRow('Warnings', data.warnings?.length || 0)}
+      </div>`;
+  } else if (data.document_type === 'tax_statement') {
+    const h = data.header || {};
+    const deductors = data.deductors || [];
+    return `
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="color:var(--accent);font-size:11px;font-weight:700;letter-spacing:1px;">TAX STATEMENT</div>
+        ${summaryRow('Form', h.form_type)}
+        ${summaryRow('AY', h.assessment_year)}
+        ${summaryRow('PAN', h.pan)}
+        ${summaryRow('Taxpayer', h.taxpayer_name)}
+        ${summaryRow('Total Paid', h.total_amount_paid_credited?.toLocaleString())}
+        ${summaryRow('Total TDS Deducted', h.total_tax_deducted?.toLocaleString())}
+        ${summaryRow('Total TDS Deposited', h.total_tds_deposited?.toLocaleString())}
+        ${summaryRow('Deductors', deductors.length)}
+        ${summaryRow('Warnings', data.warnings?.length || 0)}
+      </div>`;
+  } else {
+    return `<div style="color:var(--subtext);font-size:12px;padding:10px 0;">Document type: <strong style="color:var(--warn)">${data.document_type}</strong><br>Switch to Pretty or Raw tab for full details.</div>`;
+  }
+}
+
+function summaryRow(label, value) {
+  const display = value === null || value === undefined ? `<span style="color:var(--muted)">—</span>` : `<span style="color:var(--text)">${value}</span>`;
+  return `<div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--border);padding-bottom:8px;">
+    <span style="color:var(--subtext);font-size:12px;">${label}</span>
+    <span style="font-size:12px;font-weight:600;">${display}</span>
+  </div>`;
+}
+
+function escapeHtml(text) {
+  return text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function copyResult() {
+  if (!resultData) return toast('No result to copy', 'err');
+  navigator.clipboard.writeText(JSON.stringify(resultData, null, 2))
+    .then(() => toast('Copied to clipboard', 'ok'))
+    .catch(() => toast('Copy failed', 'err'));
+}
+
+function clearResult() {
+  resultData = null;
+  document.getElementById('confidenceWrap').style.display = 'none';
+  document.getElementById('resultTabs').style.display = 'none';
+  document.getElementById('resultArea').innerHTML = `
+    <div class="placeholder-msg">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <span>Upload a document or look up a job<br>to see extraction results here</span>
+    </div>`;
+}
+
+function clearLog() {
+  document.getElementById('logConsole').innerHTML = '';
+  log('Log cleared', 'info');
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+services:
+
+  ocr-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ocr-engine
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-ocr_engine}
+      DB_USER: ${DB_USER:-ocr_user}
+      DB_PASSWORD: ${DB_PASSWORD:-changeme}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      UPLOAD_DIR: /app/storage/uploads
+      ARTIFACTS_DIR: /app/storage/artifacts
+      LOG_DIR: /app/logs
+      TESSERACT_LANG: ${TESSERACT_LANG:-eng}
+      TESSERACT_OEM: ${TESSERACT_OEM:-3}
+      TESSERACT_PSM: ${TESSERACT_PSM:-6}
+      PDF_RENDER_DPI: ${PDF_RENDER_DPI:-200}
+      MAX_WORKERS: ${MAX_WORKERS:-2}
+      JOB_TIMEOUT: ${JOB_TIMEOUT:-300000}
+      PDF_RETENTION_DAYS: ${PDF_RETENTION_DAYS:-90}
+      ARTIFACT_RETENTION_DAYS: ${ARTIFACT_RETENTION_DAYS:-30}
+      DEBUG_ARTIFACTS: ${DEBUG_ARTIFACTS:-false}
+      API_KEY: ${API_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - ocr-storage:/app/storage
+      - ocr-logs:/app/logs
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - ocr-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: ocr-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${DB_NAME:-ocr_engine}
+      MYSQL_USER: ${DB_USER:-ocr_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-changeme}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./migrations/001_initial.sql:/docker-entrypoint-initdb.d/001_initial.sql:ro
+    # No ports — internal network only, avoids conflict with banking-mysql on 3306
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "--password=${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - ocr-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: ocr-redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - redis-data:/data
+    # No ports — internal network only, avoids conflict with banking redis on 6379
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ocr-network
+
+volumes:
+  mysql-data:
+  redis-data:
+  ocr-storage:
+  ocr-logs:
+
+networks:
+  ocr-network:
+    driver: bridge

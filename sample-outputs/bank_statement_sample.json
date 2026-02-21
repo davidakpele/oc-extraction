@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0",
+  "document_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "document_type": "bank_statement",
+  "processing": {
+    "is_scanned": false,
+    "page_count": 3,
+    "ocr_applied": false
+  },
+  "confidence": 0.87,
+  "warnings": [],
+  "header": {
+    "bank_name": "State Bank of India",
+    "account_number": "12345678901",
+    "account_holder_name": "Rahul Kumar Sharma",
+    "account_type": "savings",
+    "ifsc_code": "SBIN0001234",
+    "branch": "Andheri West, Mumbai",
+    "statement_period_from": "2024-01-01",
+    "statement_period_to": "2024-03-31",
+    "opening_balance": 25430.50,
+    "closing_balance": 48250.75,
+    "currency": "INR"
+  },
+  "transactions": [
+    {
+      "date": "2024-01-03",
+      "description": "UPI/CR/PHONEPE/SALARY JAN 2024",
+      "debit": null,
+      "credit": 55000.00,
+      "balance": 80430.50,
+      "reference": "UTR123456789012"
+    },
+    {
+      "date": "2024-01-05",
+      "description": "NEFT/DR/HDFC/RENT PAYMENT",
+      "debit": 22000.00,
+      "credit": null,
+      "balance": 58430.50,
+      "reference": "NEFT20240105001"
+    },
+    {
+      "date": "2024-01-10",
+      "description": "ATM/DR/SBI ATM/ANDHERI",
+      "debit": 5000.00,
+      "credit": null,
+      "balance": 53430.50,
+      "reference": null
+    },
+    {
+      "date": "2024-01-15",
+      "description": "IMPS/CR/GOOGLE PAY/TRANSFER",
+      "debit": null,
+      "credit": 2500.00,
+      "balance": 55930.50,
+      "reference": "IMPS2401150042"
+    },
+    {
+      "date": "2024-01-22",
+      "description": "POS/DR/AMAZON INDIA/ONLINE PURCHASE",
+      "debit": 3499.00,
+      "credit": null,
+      "balance": 52431.50,
+      "reference": null
+    },
+    {
+      "date": "2024-02-01",
+      "description": "NACH/DR/LIC PREMIUM/AUTO DEBIT",
+      "debit": 4180.75,
+      "credit": null,
+      "balance": 48250.75,
+      "reference": "NACH20240201X89"
+    }
+  ]
+}

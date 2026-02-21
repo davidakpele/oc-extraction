@@ -1,0 +1,10 @@
+node_modules/
+.env
+*.log
+storage/
+logs/
+coverage/
+.nyc_output/
+*.pdf
+!sample-outputs/
+dist/

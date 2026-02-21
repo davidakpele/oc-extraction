@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.0",
+  "document_id": "b2c3d4e5-f6a7-8901-bcde-f12345678901",
+  "document_type": "tax_statement",
+  "processing": {
+    "is_scanned": true,
+    "page_count": 5,
+    "ocr_applied": true
+  },
+  "confidence": 0.79,
+  "warnings": [
+    {
+      "code": "SCANNED_PDF",
+      "message": "Document appears to be scanned. OCR applied."
+    }
+  ],
+  "header": {
+    "form_type": "FORM 26AS",
+    "assessment_year": "2024-25",
+    "taxpayer_name": "Rahul Kumar Sharma",
+    "pan": "ABCDE1234F",
+    "taxpayer_address": "123, Green Avenue, Andheri West, Mumbai 400053",
+    "total_amount_paid_credited": 780000.00,
+    "total_tax_deducted": 78000.00,
+    "total_tds_deposited": 78000.00
+  },
+  "deductors": [
+    {
+      "name": "XYZ Technologies Pvt Ltd",
+      "tan": "MUMX12345A",
+      "pan": "AABCX1234D",
+      "total_amount_paid_credited": 660000.00,
+      "total_tax_deducted": 66000.00,
+      "total_tds_deposited": 66000.00,
+      "transactions": [
+        {
+          "section": "192",
+          "transaction_date": "2024-04-30",
+          "booking_date": "2024-05-07",
+          "status_of_booking": "Final",
+          "remarks": null,
+          "amount_paid_credited": 55000.00,
+          "tax_deducted": 5500.00,
+          "tds_deposited": 5500.00
+        },
+        {
+          "section": "192",
+          "transaction_date": "2024-05-31",
+          "booking_date": "2024-06-07",
+          "status_of_booking": "Final",
+          "remarks": null,
+          "amount_paid_credited": 55000.00,
+          "tax_deducted": 5500.00,
+          "tds_deposited": 5500.00
+        },
+        {
+          "section": "192",
+          "transaction_date": "2024-06-30",
+          "booking_date": "2024-07-07",
+          "status_of_booking": "Final",
+          "remarks": null,
+          "amount_paid_credited": 55000.00,
+          "tax_deducted": 5500.00,
+          "tds_deposited": 5500.00
+        }
+      ]
+    },
+    {
+      "name": "HDFC Bank Limited",
+      "tan": "MUMH98765B",
+      "pan": "AABCH5922F",
+      "total_amount_paid_credited": 120000.00,
+      "total_tax_deducted": 12000.00,
+      "total_tds_deposited": 12000.00,
+      "transactions": [
+        {
+          "section": "194A",
+          "transaction_date": "2024-06-30",
+          "booking_date": "2024-07-15",
+          "status_of_booking": "Final",
+          "remarks": "FD Interest Q1",
+          "amount_paid_credited": 120000.00,
+          "tax_deducted": 12000.00,
+          "tds_deposited": 12000.00
+        }
+      ]
+    }
+  ]
+}
